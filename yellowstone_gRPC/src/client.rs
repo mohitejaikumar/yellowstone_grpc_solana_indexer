@@ -135,7 +135,6 @@ impl YellowstoneClient {
         transaction_update: SubscribeUpdateTransaction,
     ) -> Option<SolanaTransaction> {
         if let Some(transaction_info) = transaction_update.transaction {
-
             let signature = bs58::encode(&transaction_info.signature).into_string();
 
             let (
@@ -245,7 +244,6 @@ impl YellowstoneClient {
 
     fn to_solana_account(account_update: SubscribeUpdateAccount) -> Option<SolanaAccount> {
         if let Some(account_info) = account_update.account {
-
             let pubkey = bs58::encode(&account_info.pubkey).into_string();
             let owner = bs58::encode(&account_info.owner).into_string();
             let data = general_purpose::STANDARD.encode(&account_info.data);

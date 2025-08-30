@@ -17,7 +17,6 @@ pub struct SolanaTransaction {
     pub post_balances: Vec<u64>,
     pub timestamp: DateTime<Utc>,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionInstruction {
     pub program_id: String,

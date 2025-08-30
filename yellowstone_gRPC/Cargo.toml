@@ -11,6 +11,7 @@ anyhow = "1.0.99"
 base64 = "0.22.0"
 bs58 = "0.5.0"
 chrono = {version="0.4.41", features = ["serde"]}
+clickhouse = "0.13.3"
 futures = "0.3.31"
 redis = "0.32.5"
 serde = "1.0.219"

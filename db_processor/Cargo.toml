@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.99"
+chrono = "0.4.38"
+scylla = "0.14.0"
 dotenv = "0.15.0"
 futures = "0.3.31"
 redis = "0.32.5"
