@@ -47,7 +47,6 @@ impl YellowstoneClient {
         while let Some(message) = stream.next().await {
             match message {
                 Ok(update) => {
-                    // println!("Processing update: {:?}", update);
                     Self::process_update(update, redis_client_connection, stream_name).await?;
                 }
                 Err(error) => {
@@ -136,10 +135,9 @@ impl YellowstoneClient {
         transaction_update: SubscribeUpdateTransaction,
     ) -> Option<SolanaTransaction> {
         if let Some(transaction_info) = transaction_update.transaction {
-            // Extract signature as base58 string (Solana standard)
+
             let signature = bs58::encode(&transaction_info.signature).into_string();
 
-            // Extract transaction data
             let (
                 success,
                 fee,
@@ -157,7 +155,6 @@ impl YellowstoneClient {
                 let fee = Some(meta.fee);
                 let compute_units_consumed = meta.compute_units_consumed;
 
-                // Extract instructions
                 let mut instructions = Vec::new();
                 if let Some(message) = transaction.message.as_ref() {
                     for instruction in &message.instructions {
@@ -187,7 +184,6 @@ impl YellowstoneClient {
                     }
                 }
 
-                // Extract account keys
                 let account_keys: Vec<String> = if let Some(message) = transaction.message.as_ref()
                 {
                     message
@@ -199,10 +195,8 @@ impl YellowstoneClient {
                     Vec::new()
                 };
 
-                // Extract log messages
                 let log_messages: Vec<String> = meta.log_messages.clone();
 
-                // Extract balances
                 let pre_balances = meta.pre_balances.clone();
                 let post_balances = meta.post_balances.clone();
 
@@ -251,16 +245,11 @@ impl YellowstoneClient {
 
     fn to_solana_account(account_update: SubscribeUpdateAccount) -> Option<SolanaAccount> {
         if let Some(account_info) = account_update.account {
-            // Convert pubkey from bytes to base58 string
+
             let pubkey = bs58::encode(&account_info.pubkey).into_string();
-
-            // Convert owner from bytes to base58 string
             let owner = bs58::encode(&account_info.owner).into_string();
-
-            // Encode account data as base64
             let data = general_purpose::STANDARD.encode(&account_info.data);
 
-            // Convert optional transaction signature to base58 string
             let txn_signature = account_info
                 .txn_signature
                 .map(|sig| bs58::encode(&sig).into_string());
