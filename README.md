@@ -129,6 +129,127 @@ SCYLLA_NODES=127.0.0.1:9042,127.0.0.1:9043,127.0.0.1:9044
 
 ## 📊 Data Schema
 
+### Example Transaction Data
+
+Here's an example of a structured `SolanaTransaction` log that the indexer processes:
+
+```
+SolanaTransaction:
+  signature: wEfC4JFZj6pHadcbJwYaM6pumTyJA7WVTPMHvmmwuAbgeyuGMauDi6AfG8LRyt8kvrhttRG9AKupnwpr71ruKFY
+  slot: 363515210
+  is_vote: false
+  index: 28
+  success: true
+  fee: Some(5000)
+  compute_units_consumed: Some(34734)
+  instructions: [
+    TransactionInstruction:
+      program_id: 11111111111111111111111111111111
+      accounts: [
+        "2xYWviZJpxhifFw2emoxn8eCVa9u67sdEbL7zhokvbLW",
+        "35eNC63jS5ughGqjfkMzmQpRY412mVW6v3QvobRQUKii",
+      ]
+      data: AwAAAB0WRELKkUzYlJGHY2nIWCtH3XY1p8C51bApCV4YK1ZrIAAAAAAAAAA3Z2p6ZjI2OHBDb29DaXc0RWV1dWdFeHFvN25NSDY3QsZ4igMAAAAApQAAAAAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqQ==
+
+    TransactionInstruction:
+      program_id: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
+      accounts: [
+        "35eNC63jS5ughGqjfkMzmQpRY412mVW6v3QvobRQUKii",
+        "So11111111111111111111111111111111111111112",
+        "2xYWviZJpxhifFw2emoxn8eCVa9u67sdEbL7zhokvbLW",
+        "SysvarRent111111111111111111111111111111111",
+      ]
+      data: AQ==
+
+    TransactionInstruction:
+      program_id: 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8
+      accounts: [
+        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "3BiUMV1gyEdzRZaWMET3mTCd6QDthJxDkKxXzrMGxgVR",
+        "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+        "H22prfsjFfrXQbmdCVqMD53A8Usf9j7UcJ2XDPgmnz49",
+        "DDkfWvyrd36rULgMvSYVYcPZRuFbfveEPBPuXT5Ki6yn",
+        "7g5c5UBkoE2Yz9r92F85USaB9iEuyG1LX21twzsBB3bW",
+        "CJfFpQcNRofS6juvJFFGCzLtmimuHbuLcMun67mCDPcX",
+        "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX",
+        "DQn1qK4qPKHM2Cx28rWZW8XtERs8Qss6qFNXVBbVHyei",
+        "DssV8TvzW14iYrRFt8XqXyb2E2dCc71BFoAHq5mMSvkb",
+        "D8H2YXmVUskcy9Ciz7P6rEJBavFr5sQ1dRaq3nip8tiY",
+        "4Tprxbq8BBsLXvE63zCJyYp25Qu38RHEL5YijEk3jfPN",
+        "4hyTTsqWV1Mi2LFc2cmS5BVodbSk7ecUGzcYmfgQiEfe",
+        "FjbKafcCyaq1Eo5MDMd2LEb3G44XVpHDG8TCEuD6H8C9",
+        "GEWZ6F8P3kLWcjMZuK9t5guNqvVddA1ikRVNgevkGEni",
+        "35eNC63jS5ughGqjfkMzmQpRY412mVW6v3QvobRQUKii",
+        "D7dmrhFvJXKww7wyEatV5ZNShE22nDA92NFhfndzYnEH",
+        "2xYWviZJpxhifFw2emoxn8eCVa9u67sdEbL7zhokvbLW",
+      ]
+      data: CdZaawMAAAAAqL5vAAAAAAA=
+
+    TransactionInstruction:
+      program_id: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA
+      accounts: [
+        "35eNC63jS5ughGqjfkMzmQpRY412mVW6v3QvobRQUKii",
+        "2xYWviZJpxhifFw2emoxn8eCVa9u67sdEbL7zhokvbLW",
+        "2xYWviZJpxhifFw2emoxn8eCVa9u67sdEbL7zhokvbLW",
+      ]
+      data: CQ==
+
+  ]
+  account_keys: [
+    "2xYWviZJpxhifFw2emoxn8eCVa9u67sdEbL7zhokvbLW",
+    "35eNC63jS5ughGqjfkMzmQpRY412mVW6v3QvobRQUKii",
+    "3BiUMV1gyEdzRZaWMET3mTCd6QDthJxDkKxXzrMGxgVR",
+    "H22prfsjFfrXQbmdCVqMD53A8Usf9j7UcJ2XDPgmnz49",
+    "DDkfWvyrd36rULgMvSYVYcPZRuFbfveEPBPuXT5Ki6yn",
+    "7g5c5UBkoE2Yz9r92F85USaB9iEuyG1LX21twzsBB3bW",
+    "CJfFpQcNRofS6juvJFFGCzLtmimuHbuLcMun67mCDPcX",
+    "DQn1qK4qPKHM2Cx28rWZW8XtERs8Qss6qFNXVBbVHyei",
+    "DssV8TvzW14iYrRFt8XqXyb2E2dCc71BFoAHq5mMSvkb",
+    "D8H2YXmVUskcy9Ciz7P6rEJBavFr5sQ1dRaq3nip8tiY",
+    "4Tprxbq8BBsLXvE63zCJyYp25Qu38RHEL5YijEk3jfPN",
+    "4hyTTsqWV1Mi2LFc2cmS5BVodbSk7ecUGzcYmfgQiEfe",
+    "FjbKafcCyaq1Eo5MDMd2LEb3G44XVpHDG8TCEuD6H8C9",
+    "D7dmrhFvJXKww7wyEatV5ZNShE22nDA92NFhfndzYnEH",
+    "11111111111111111111111111111111",
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "So11111111111111111111111111111111111111112",
+    "SysvarRent111111111111111111111111111111111",
+    "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+    "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+    "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX",
+    "GEWZ6F8P3kLWcjMZuK9t5guNqvVddA1ikRVNgevkGEni",
+  ]
+  log_messages: [
+    "Program 11111111111111111111111111111111 invoke [1]",
+    "Program 11111111111111111111111111111111 success",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [1]",
+    "Program log: Instruction: InitializeAccount",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3443 of 602850 compute units",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+    "Program 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 invoke [1]",
+    "Program log: ray_log: A9ZaawMAAAAAqL5vAAAAAAABAAAAAAAAANZaawMAAAAASBoQahoAAABAkzQxZwAAACx63wAAAAAA",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+    "Program log: Instruction: Transfer",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4736 of 583808 compute units",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+    "Program log: Instruction: Transfer",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4645 of 576603 compute units",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+    "Program 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 consumed 28226 of 599407 compute units",
+    "Program 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 success",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [1]",
+    "Program log: Instruction: CloseAccount",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 2915 of 571181 compute units",
+    "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+  ]
+  pre_balances: [1727976462, 0, 6124800, 23357760, 16258560, 2039280, 443209199920, 3591360, 101977920, 101977920, 79594560, 2039280, 2039280, 2039280, 1, 4674972223, 1126241608121, 1009200, 2500659929, 32325306034, 1506941574, 0]
+  post_balances: [1670604208, 0, 6124800, 23357760, 16258560, 2039280, 443266567174, 3591360, 101977920, 101977920, 79594560, 2039280, 2039280, 2039280, 1, 4674972223, 1126241608121, 1009200, 2500659929, 32325306034, 1506941574, 0]
+  timestamp: 2025-08-30 13:05:12.954036272 UTC
+```
+
+This example shows a DeFi transaction involving multiple programs including the System Program, Token Program, and what appears to be a Raydium swap. The transaction includes account creation, token transfers, and detailed execution logs.
+
 ### Transactions Table
 ```sql
 CREATE TABLE transactions (
