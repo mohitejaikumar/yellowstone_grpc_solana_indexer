@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use yellowstone_grpc_proto::geyser::{
-    SubscribeRequest, SubscribeRequestFilterAccounts, SubscribeRequestFilterTransactions,
+    CommitmentLevel, SubscribeRequest, SubscribeRequestFilterAccounts,
+    SubscribeRequestFilterTransactions,
 };
 
 pub struct Subscriptions;
@@ -45,7 +46,7 @@ impl Subscriptions {
             blocks: HashMap::new(),
             blocks_meta: HashMap::new(),
             entry: HashMap::new(),
-            commitment: None,
+            commitment: Some(CommitmentLevel::Confirmed as i32),
             accounts_data_slice: vec![],
             ping: None,
             from_slot: None,

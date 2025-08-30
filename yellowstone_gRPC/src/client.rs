@@ -1,5 +1,10 @@
+use crate::types::{SolanaAccount, SolanaTransaction};
 use anyhow::Result;
+use base64::{engine::general_purpose, Engine as _};
+use bs58;
+use chrono::Utc;
 use futures::{channel::mpsc, Sink, Stream, StreamExt};
+use redis::{Commands, Connection};
 use tonic::{transport::ClientTlsConfig, Status};
 use tracing::{error, info};
 use yellowstone_grpc_client::{
@@ -36,12 +41,14 @@ impl YellowstoneClient {
 
     pub async fn handle_stream(
         mut stream: impl Stream<Item = Result<SubscribeUpdate, Status>> + Unpin,
+        redis_client_connection: &mut Connection,
+        stream_name: &str,
     ) -> Result<()> {
         while let Some(message) = stream.next().await {
             match message {
                 Ok(update) => {
-                    println!("Processing update: {:?}", update);
-                    Self::process_update(update).await?;
+                    // println!("Processing update: {:?}", update);
+                    Self::process_update(update, redis_client_connection, stream_name).await?;
                 }
                 Err(error) => {
                     error!("Stream Error: {}", error);
@@ -51,16 +58,21 @@ impl YellowstoneClient {
         Ok(())
     }
 
-    pub async fn process_update(update: SubscribeUpdate) -> Result<()> {
+    pub async fn process_update(
+        update: SubscribeUpdate,
+        redis_client_connection: &mut Connection,
+        stream_name: &str,
+    ) -> Result<()> {
         match update.update_oneof {
             Some(subscribe_update::UpdateOneof::Account(account)) => {
-                Self::handle_account_update(account).await?;
+                Self::handle_account_update(account, redis_client_connection, stream_name).await?;
             }
             Some(subscribe_update::UpdateOneof::Transaction(transaction)) => {
-                Self::handle_transaction_update(transaction).await?;
+                Self::handle_transaction_update(transaction, redis_client_connection, stream_name)
+                    .await?;
             }
             Some(subscribe_update::UpdateOneof::Slot(slot)) => {
-                Self::handle_slot_update(slot).await?;
+                Self::handle_slot_update(slot, redis_client_connection).await?;
             }
             _ => {}
         }
@@ -68,11 +80,23 @@ impl YellowstoneClient {
         Ok(())
     }
 
-    pub async fn handle_account_update(account_update: SubscribeUpdateAccount) -> Result<()> {
-        if let Some(account) = account_update.account {
-            // TODO: logic to convert it to what i have to save in database , and pass on to redis
-            info!("Account: {:?}", account);
-            println!("Account: {:?}", account);
+    pub async fn handle_account_update(
+        account_update: SubscribeUpdateAccount,
+        redis_client_connection: &mut Connection,
+        stream_name: &str,
+    ) -> Result<()> {
+        if let Some(solana_account) = Self::to_solana_account(account_update) {
+            info!(
+                "Account: pubkey={}, lamports={}, owner={}, executable={}",
+                solana_account.pubkey,
+                solana_account.lamports,
+                solana_account.owner,
+                solana_account.executable
+            );
+
+            let account_payload = serde_json::to_string(&solana_account)?;
+            let payload = [("account", account_payload)];
+            redis_client_connection.xadd(stream_name, "*", &payload)?;
         }
 
         Ok(())
@@ -80,21 +104,182 @@ impl YellowstoneClient {
 
     pub async fn handle_transaction_update(
         transaction_update: SubscribeUpdateTransaction,
+        redis_client_connection: &mut Connection,
+        stream_name: &str,
     ) -> Result<()> {
-        if let Some(transaction) = transaction_update.transaction {
-            // TODO: logic to convert it to what i have to save in database , and pass on to redis
-            info!("Transaction: {:?}", transaction);
-            println!("Transaction: {:?}", transaction);
+        if let Some(solana_transaction) = Self::to_solana_transaction(transaction_update) {
+            info!(
+                "Transaction: signature={}, slot={}, success={}",
+                solana_transaction.signature, solana_transaction.slot, solana_transaction.success
+            );
+
+            let transaction_payload = serde_json::to_string(&solana_transaction)?;
+            let payload = [("transaction", transaction_payload)];
+            redis_client_connection.xadd(stream_name, "*", &payload)?;
         }
 
         Ok(())
     }
 
-    pub async fn handle_slot_update(slot_update: SubscribeUpdateSlot) -> Result<()> {
-        // TODO: logic to convert it to what i have to save in database , and pass on to redis
+    pub async fn handle_slot_update(
+        slot_update: SubscribeUpdateSlot,
+        redis_client_connection: &mut Connection,
+    ) -> Result<()> {
         info!("Slot: {:?}", slot_update.slot);
-        println!("Slot: {:?}", slot_update.slot);
+        redis_client_connection.set("current_slot", slot_update.slot)?;
 
         Ok(())
+    }
+
+    fn to_solana_transaction(
+        transaction_update: SubscribeUpdateTransaction,
+    ) -> Option<SolanaTransaction> {
+        if let Some(transaction_info) = transaction_update.transaction {
+            // Extract signature as base58 string (Solana standard)
+            let signature = bs58::encode(&transaction_info.signature).into_string();
+
+            // Extract transaction data
+            let (
+                success,
+                fee,
+                compute_units_consumed,
+                instructions,
+                account_keys,
+                log_messages,
+                pre_balances,
+                post_balances,
+            ) = if let (Some(transaction), Some(meta)) = (
+                transaction_info.transaction.as_ref(),
+                transaction_info.meta.as_ref(),
+            ) {
+                let success = meta.err.is_none();
+                let fee = Some(meta.fee);
+                let compute_units_consumed = meta.compute_units_consumed;
+
+                // Extract instructions
+                let mut instructions = Vec::new();
+                if let Some(message) = transaction.message.as_ref() {
+                    for instruction in &message.instructions {
+                        let program_id_index = instruction.program_id_index as usize;
+                        let program_id = if program_id_index < message.account_keys.len() {
+                            bs58::encode(&message.account_keys[program_id_index]).into_string()
+                        } else {
+                            String::new()
+                        };
+
+                        let accounts: Vec<String> = instruction
+                            .accounts
+                            .iter()
+                            .map(|&idx| {
+                                let account_index = idx as usize;
+                                if account_index < message.account_keys.len() {
+                                    bs58::encode(&message.account_keys[account_index]).into_string()
+                                } else {
+                                    String::new()
+                                }
+                            })
+                            .collect();
+
+                        instructions.push(crate::types::TransactionInstruction {
+                            program_id,
+                            accounts,
+                            data: general_purpose::STANDARD.encode(&instruction.data),
+                        });
+                    }
+                }
+
+                // Extract account keys
+                let account_keys: Vec<String> = if let Some(message) = transaction.message.as_ref()
+                {
+                    message
+                        .account_keys
+                        .iter()
+                        .map(|key| bs58::encode(key).into_string())
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+
+                // Extract log messages
+                let log_messages: Vec<String> = meta.log_messages.clone();
+
+                // Extract balances
+                let pre_balances = meta.pre_balances.clone();
+                let post_balances = meta.post_balances.clone();
+
+                (
+                    success,
+                    fee,
+                    compute_units_consumed,
+                    instructions,
+                    account_keys,
+                    log_messages,
+                    pre_balances,
+                    post_balances,
+                )
+            } else {
+                (
+                    false,
+                    None,
+                    None,
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                    Vec::new(),
+                )
+            };
+
+            Some(SolanaTransaction {
+                signature,
+                slot: transaction_update.slot,
+                is_vote: transaction_info.is_vote,
+                index: transaction_info.index,
+                success,
+                fee,
+                compute_units_consumed,
+                instructions,
+                account_keys,
+                log_messages,
+                pre_balances,
+                post_balances,
+                timestamp: Utc::now(),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn to_solana_account(account_update: SubscribeUpdateAccount) -> Option<SolanaAccount> {
+        if let Some(account_info) = account_update.account {
+            // Convert pubkey from bytes to base58 string
+            let pubkey = bs58::encode(&account_info.pubkey).into_string();
+
+            // Convert owner from bytes to base58 string
+            let owner = bs58::encode(&account_info.owner).into_string();
+
+            // Encode account data as base64
+            let data = general_purpose::STANDARD.encode(&account_info.data);
+
+            // Convert optional transaction signature to base58 string
+            let txn_signature = account_info
+                .txn_signature
+                .map(|sig| bs58::encode(&sig).into_string());
+
+            Some(SolanaAccount {
+                pubkey,
+                lamports: account_info.lamports,
+                owner,
+                executable: account_info.executable,
+                rent_epoch: account_info.rent_epoch,
+                data,
+                write_version: account_info.write_version,
+                slot: account_update.slot,
+                txn_signature,
+                timestamp: Utc::now(),
+            })
+        } else {
+            None
+        }
     }
 }

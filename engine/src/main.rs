@@ -1,25 +1,33 @@
 mod config;
 
+use crate::config::Config;
 use anyhow::Result;
 use futures::SinkExt;
+use redis::Client;
 use tracing::info;
 use yellowstone_gRPC::{client::YellowstoneClient, subscriptions::Subscriptions};
 
-use crate::config::Config;
+fn setup_logging() {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+}
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn setup_rustls() {
     // Install default crypto provider for rustls
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install crypto provider");
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    setup_logging();
+    setup_rustls();
 
     dotenv::dotenv().ok();
 
-    tracing_subscriber::fmt::init();
-
     info!("Starting Solana Indexer Pipeline");
-    println!("Starting Solana Indexer Pipeline");
 
     let config = Config::from_env()?;
 
@@ -29,8 +37,6 @@ async fn main() -> Result<()> {
     )
     .await?;
 
-    println!("Created yellowstone client");
-
     let (mut subscriber_tx, subscribe_rx) =
         YellowstoneClient::subscribe(&mut yellowstone_client).await?;
     let defi_subscription_request = Subscriptions::create_defi_subscription();
@@ -38,8 +44,9 @@ async fn main() -> Result<()> {
     subscriber_tx.send(defi_subscription_request).await?;
 
     info!("Subscribed to defi transactions. Starting stream processing...");
-    println!("Subscribed to defi transactions. Starting stream processing...");
-    YellowstoneClient::handle_stream(subscribe_rx).await?;
+    let redis_client = Client::open(config.redis_url)?;
+    let mut redis_connection = redis_client.get_connection()?;
+    YellowstoneClient::handle_stream(subscribe_rx, &mut redis_connection, "db_processor").await?;
 
     Ok(())
 }
