@@ -1,13 +1,13 @@
-use std::error::Error;
-
+use anyhow::Result;
 use futures::{channel::mpsc, Sink, Stream, StreamExt};
-use tonic::{transport::ClientTlsConfig, Status, Streaming};
-use tracing::error;
+use tonic::{transport::ClientTlsConfig, Status};
+use tracing::{error, info};
 use yellowstone_grpc_client::{
     GeyserGrpcBuilderError, GeyserGrpcClient, GeyserGrpcClientResult, Interceptor,
 };
 use yellowstone_grpc_proto::geyser::{
-    subscribe_update, SubscribeRequest, SubscribeUpdate, SubscribeUpdateAccount, SubscribeUpdateTransaction,
+    subscribe_update, SubscribeRequest, SubscribeUpdate, SubscribeUpdateAccount,
+    SubscribeUpdateSlot, SubscribeUpdateTransaction,
 };
 
 pub struct YellowstoneClient;
@@ -35,11 +35,14 @@ impl YellowstoneClient {
     }
 
     pub async fn handle_stream(
-        mut stream: Streaming<SubscribeUpdate>,
-    ) -> Result<(), Box<dyn Error>> {
+        mut stream: impl Stream<Item = Result<SubscribeUpdate, Status>> + Unpin,
+    ) -> Result<()> {
         while let Some(message) = stream.next().await {
             match message {
-                Ok(update) => {}
+                Ok(update) => {
+                    println!("Processing update: {:?}", update);
+                    Self::process_update(update).await?;
+                }
                 Err(error) => {
                     error!("Stream Error: {}", error);
                 }
@@ -51,13 +54,13 @@ impl YellowstoneClient {
     pub async fn process_update(update: SubscribeUpdate) -> Result<()> {
         match update.update_oneof {
             Some(subscribe_update::UpdateOneof::Account(account)) => {
-                println!("Account: {:?}", account);
+                Self::handle_account_update(account).await?;
             }
             Some(subscribe_update::UpdateOneof::Transaction(transaction)) => {
-                println!("Transaction: {:?}", transaction);
+                Self::handle_transaction_update(transaction).await?;
             }
             Some(subscribe_update::UpdateOneof::Slot(slot)) => {
-                println!("Slot: {:?}", slot);
+                Self::handle_slot_update(slot).await?;
             }
             _ => {}
         }
@@ -68,23 +71,30 @@ impl YellowstoneClient {
     pub async fn handle_account_update(account_update: SubscribeUpdateAccount) -> Result<()> {
         if let Some(account) = account_update.account {
             // TODO: logic to convert it to what i have to save in database , and pass on to redis
+            info!("Account: {:?}", account);
+            println!("Account: {:?}", account);
         }
 
         Ok(())
     }
 
-    pub async fn handle_transaction_update(transaction_update: SubscribeUpdateTransaction) -> Result<()> {
+    pub async fn handle_transaction_update(
+        transaction_update: SubscribeUpdateTransaction,
+    ) -> Result<()> {
         if let Some(transaction) = transaction_update.transaction {
-            // TODO: logic to convert it to what i have to save in database , and pass on to redis  
+            // TODO: logic to convert it to what i have to save in database , and pass on to redis
+            info!("Transaction: {:?}", transaction);
+            println!("Transaction: {:?}", transaction);
         }
 
         Ok(())
     }
 
     pub async fn handle_slot_update(slot_update: SubscribeUpdateSlot) -> Result<()> {
-        if let Some(slot) = slot_update.slot {
-            // TODO: logic to convert it to what i have to save in database , and pass on to redis  
-        }
+        // TODO: logic to convert it to what i have to save in database , and pass on to redis
+        info!("Slot: {:?}", slot_update.slot);
+        println!("Slot: {:?}", slot_update.slot);
+
         Ok(())
     }
 }

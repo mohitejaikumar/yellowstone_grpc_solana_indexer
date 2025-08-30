@@ -1,3 +1,3 @@
-mod client;
-mod types;
-
+pub mod client;
+pub mod subscriptions;
+pub mod types;
