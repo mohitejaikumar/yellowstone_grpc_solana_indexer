@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
     info!("Subscribed to defi transactions. Starting stream processing...");
     let redis_client = Client::open(config.redis_url)?;
     let mut redis_connection = redis_client.get_connection()?;
-    YellowstoneClient::handle_stream(subscribe_rx, &mut redis_connection, "db_processor").await?;
+    YellowstoneClient::handle_stream(subscribe_rx, &mut redis_connection, "yellowstone_gRPC_streams").await?;
 
     Ok(())
 }

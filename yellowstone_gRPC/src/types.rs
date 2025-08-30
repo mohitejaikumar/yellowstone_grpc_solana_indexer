@@ -38,3 +38,11 @@ pub struct SolanaAccount {
     pub txn_signature: Option<String>, // base58 encoded if present
     pub timestamp: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum IndexEvent {
+    Transaction(SolanaTransaction),
+    Account(SolanaAccount),
+    Slot(u64),
+    Block(u64),
+}

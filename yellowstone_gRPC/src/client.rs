@@ -1,4 +1,4 @@
-use crate::types::{SolanaAccount, SolanaTransaction};
+use crate::types::{IndexEvent, SolanaAccount, SolanaTransaction};
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
 use bs58;
@@ -94,8 +94,8 @@ impl YellowstoneClient {
                 solana_account.executable
             );
 
-            let account_payload = serde_json::to_string(&solana_account)?;
-            let payload = [("account", account_payload)];
+            let account_payload = serde_json::to_string(&IndexEvent::Account(solana_account))?;
+            let payload = [("payload", account_payload)];
             redis_client_connection.xadd(stream_name, "*", &payload)?;
         }
 
@@ -113,8 +113,9 @@ impl YellowstoneClient {
                 solana_transaction.signature, solana_transaction.slot, solana_transaction.success
             );
 
-            let transaction_payload = serde_json::to_string(&solana_transaction)?;
-            let payload = [("transaction", transaction_payload)];
+            let transaction_payload =
+                serde_json::to_string(&IndexEvent::Transaction(solana_transaction))?;
+            let payload = [("payload", transaction_payload)];
             redis_client_connection.xadd(stream_name, "*", &payload)?;
         }
 
@@ -170,13 +171,11 @@ impl YellowstoneClient {
                         let accounts: Vec<String> = instruction
                             .accounts
                             .iter()
-                            .map(|&idx| {
-                                let account_index = idx as usize;
-                                if account_index < message.account_keys.len() {
-                                    bs58::encode(&message.account_keys[account_index]).into_string()
-                                } else {
-                                    String::new()
-                                }
+                            .filter_map(|&idx| {
+                                message
+                                    .account_keys
+                                    .get(idx as usize)
+                                    .map(|key| bs58::encode(key).into_string())
                             })
                             .collect();
 

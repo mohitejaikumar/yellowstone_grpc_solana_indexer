@@ -1,0 +1,16 @@
+[package]
+name = "db_processor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.99"
+dotenv = "0.15.0"
+futures = "0.3.31"
+redis = "0.32.5"
+serde = "1.0.219"
+serde_json = "1.0.143"
+tokio = {version = "1.47.1", features = ["full"] }
+tracing = "0.1.41"
+tracing-subscriber = {version = "0.3.19", features = ["env-filter"]}
+yellowstone_gRPC = {path = "../yellowstone_gRPC"}

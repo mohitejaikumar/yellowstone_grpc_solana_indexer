@@ -681,6 +681,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "db_processor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dotenv",
+ "futures",
+ "redis",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "yellowstone_gRPC",
+]
+
+[[package]]
 name = "derivation-path"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
